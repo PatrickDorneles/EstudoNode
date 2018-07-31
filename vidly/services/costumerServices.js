@@ -19,16 +19,24 @@ const costumerSchema = new mongoose.Schema({
 const Costumer = mongoose.model('Costumer', costumerSchema)
 
 async function getCostumers() {
+
     const costumers = await Costumer.find()
+
+    console.log(costumers);
+    
 
     return { status: statusCode.OK, data: costumers }
 }
+
+module.exports.getCostumers = getCostumers
 
 async function getCostumerById(id) {
     const costumer = await Costumer.findById(id)
 
     return { status: statusCode.OK, data: { costumer } }
 }
+
+module.exports.getCostumerById = getCostumerById
 
 async function createCostumer(costumer) {
     
@@ -48,8 +56,26 @@ async function createCostumer(costumer) {
         return { status: statusCode.BAD_REQUEST, data: 'Invalid value for "is Gold" '}
     }
 
-    if(!costumer.phone) {
+    if(!costumer.phone || costumer.phone.length < 8) {
         return { status: statusCode.BAD_REQUEST, data: 'Invalid phone number'}
     }
 
+    const existingCostumer = Costumer.findOne({name: costumer.name})
+
+    if(existingCostumer) {
+        return { status: statusCode.BAD_REQUEST, data: 'Costumer name already in use'}
+    }
+
+    const newCostumer = new Costumer({
+        name: costumer.name,
+        isGold: costumer.isGold,
+        phone: costumer.phone
+    })
+
+    await newCostumer.save()
+
+    return { status: statusCode.CREATED, data: { newCostumer }}
+
 }
+
+module.exports.createCostumer = createCostumer
