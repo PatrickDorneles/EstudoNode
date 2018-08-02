@@ -1,5 +1,6 @@
 const mongoose = require('../config/server').Mongoose
-const { OK, NOT_FOUND, BAD_REQUEST, CREATED } = require('../utils/statusCodes')
+const GenreNotFoundError = require('../errors/GenreNotFoundError')
+const InvalidGenreNameError = require('../errors/InvalidGenreNameError')
 
 const genreSchema = new mongoose.Schema({
     name: {
@@ -14,7 +15,7 @@ async function getGenres() {
 
     const genres = await Genre.find()
 
-    return { status: OK, data: genres }
+    return { genres }
 
 }
 
@@ -22,18 +23,14 @@ module.exports.getGenres = getGenres
 
 async function postGenre(genre) {
 
-    if (!genre) {
-        return { status: BAD_REQUEST, data: 'Genre invalid' }
-    }
-
     if (!genre.name || !genre.name.length) {
-        return { status: BAD_REQUEST, data: 'Genre name invalid' }
+        throw new InvalidGenreNameError("Name can't be empty")
     }
 
     const existentGenre = await Genre.findOne({ name: genre.name })
 
     if (existentGenre) {
-        return { status: BAD_REQUEST, data: 'Genre name already in use' }
+        throw new InvalidGenreNameError("Name already in use")
     }
 
     const newGenre = new Genre({
@@ -42,7 +39,7 @@ async function postGenre(genre) {
 
     const response = await newGenre.save()
 
-    return { status: CREATED, data: { newGenre } }
+    return { newGenre }
 
 }
 
@@ -53,10 +50,10 @@ async function getGenreById(id) {
     const genre = await Genre.findById(id)
 
     if (!genre) {
-        return { status: NOT_FOUND, data: 'Genre not found' }
+        throw new GenreNotFoundError()
     }
 
-    return { status: OK, data: { genre } }
+    return { genre }
 
 }
 
@@ -67,15 +64,11 @@ async function putGenre(id, newGenre) {
     const genre = await Genre.findById(id)
 
     if (!genre) {
-        return { status: NOT_FOUND, data: 'Genre not found' }
-    }
-
-    if (!newGenre) {
-        return { status: BAD_REQUEST, data: 'Genre invalid' }
+        throw new GenreNotFoundError()
     }
 
     if (!newGenre.name || !newGenre.name.length) {
-        return { status: BAD_REQUEST, data: 'Genre name invalid' }
+        throw new InvalidGenreNameError("Name can't be empty")
     }
 
     genre.set({
@@ -84,7 +77,7 @@ async function putGenre(id, newGenre) {
 
     genre.save()
 
-    return { status: OK, data: { genre } }
+    return { genre }
 
 }
 
@@ -95,12 +88,12 @@ async function deleteGenre(id) {
     const genre = await Genre.findById(id)
 
     if (!genre) {
-        return { status: NOT_FOUND, data: 'Genre not found' }
+        throw new GenreNotFoundError()
     }
 
     await Genre.deleteOne({ _id: id })
 
-    return { status: OK, data: `Genre ${genre.name} was deleted ` }
+    return { message: `Genre ${genre.name} was deleted ` }
 
 }
 

@@ -1,5 +1,9 @@
 const mongoose = require('../config/server').Mongoose
 const { OK, NOT_FOUND, BAD_REQUEST, CREATED } = require('../utils/statusCodes')
+const CostumerNotFoundError = require('../errors/CostumerNotFoundError')
+const InvalidCostumerNameError = require('../errors/InvalidCostumerNameError')
+const InvalidCostumerGoldStatusError = require('../errors/InvalidCostumerGoldStatusError')
+const InvalidCostumerPhoneNumberError = require('../errors/InvalidCostumerPhoneNumberError')
 
 const costumerSchema = new mongoose.Schema({
     name: {
@@ -25,7 +29,7 @@ async function getCostumers() {
     console.log(costumers);
     
 
-    return { status: OK, data: costumers }
+    return { costumers }
 }
 
 module.exports.getCostumers = getCostumers
@@ -34,40 +38,36 @@ async function getCostumerById(id) {
     const costumer = await Costumer.findById(id)
 
     if(!costumer){
-        return { status: NOT_FOUND, data: 'Costumer not found' }
+        throw new CostumerNotFoundError()
     }
 
-    return { status: OK, data: { costumer } }
+    return { costumer }
 }
 
 module.exports.getCostumerById = getCostumerById
 
 async function createCostumer(costumer) {
-    
-    if(!costumer) {
-        return { status: BAD_REQUEST, data: 'Invalid costumer' }
-    }
 
     if(!costumer.name) {
-        return { status: BAD_REQUEST, data: 'Invalid costumer name'}
+        throw new InvalidCostumerNameError("Name can't be empty")
     }
 
     if(costumer.name.length < 2){
-        return { status: BAD_REQUEST, data: 'Name must be at least 3 characters long'}
+        throw new InvalidCostumerNameError('Name must be at least 3 characters long')
     }
 
-    if(costumer.isGold === undefined || costumer.isGold === null){
-        return { status: BAD_REQUEST, data: 'Invalid value for "is Gold" '}
+    if(costumer.isGold === undefined || costumer.isGold === null || typeof costumer.isGold !== 'boolean'){
+        throw new InvalidCostumerGoldStatusError()
     }
 
     if(!costumer.phone || costumer.phone.length < 8) {
-        return { status: BAD_REQUEST, data: 'Invalid phone number'}
+        throw new InvalidCostumerPhoneNumberError()
     }
 
     const existingCostumer = await Costumer.findOne({name: costumer.name})
 
     if(existingCostumer) {
-        return { status: BAD_REQUEST, data: 'Costumer name already in use'}
+        throw new InvalidCostumerNameError('Name already in use')
     }
 
     const newCostumer = new Costumer({
@@ -78,7 +78,7 @@ async function createCostumer(costumer) {
 
     await newCostumer.save()
 
-    return { status: CREATED, data: { newCostumer }}
+    return { newCostumer }
 
 }
 
@@ -89,27 +89,23 @@ async function putCostumer(id, newCostumer) {
     const costumer = await Costumer.findById(id)
 
     if(!costumer){
-        return { status: NOT_FOUND, data: 'Costumer not found' }
-    }
-
-    if(!newCostumer) {
-        return { status: BAD_REQUEST, data: 'Invalid costumer' }
+        throw new CostumerNotFoundError()
     }
 
     if(!newCostumer.name) {
-        return { status: BAD_REQUEST, data: 'Invalid costumer name'}
+        throw new InvalidCostumerNameError("Name can't be empty")
     }
 
     if(newCostumer.name.length < 2){
-        return { status: BAD_REQUEST, data: 'Name must be at least 3 characters long'}
+        throw new InvalidCostumerNameError('Name must be at least 3 characters long')
     }
 
     if(newCostumer.isGold === undefined || newCostumer.isGold === null){
-        return { status: BAD_REQUEST, data: 'Invalid value for "is Gold" '}
+        throw new InvalidCostumerGoldStatusError()
     }
 
     if(!newCostumer.phone || newCostumer.phone.length < 8) {
-        return { status: BAD_REQUEST, data: 'Invalid phone number'}
+        throw new InvalidCostumerPhoneNumberError()
     }
 
     costumer.set({
@@ -120,7 +116,7 @@ async function putCostumer(id, newCostumer) {
 
     costumer.save()
 
-    return { status: OK, data: { costumer } }
+    return { costumer }
 
     
 }
@@ -132,12 +128,12 @@ async function deleteCostumer(id) {
     const costumer = await Costumer.findById(id)
 
     if(!costumer){
-        return { status: NOT_FOUND, data: 'Costumer not found' }
+        throw new CostumerNotFoundError()
     }
 
     await Costumer.deleteOne({ _id: id })
 
-    return { status: OK, data: `Costumer ${costumer.name} successfully deleted ` }
+    return { message: `Costumer ${costumer.name} successfully deleted ` }
     
 }
 
